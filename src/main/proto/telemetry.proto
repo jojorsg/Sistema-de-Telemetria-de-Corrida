@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package telemetry;
+
+option java_package = "com.telemetry.proto";
+option java_multiple_files = true;
+option java_outer_classname = "TelemetryProto";
+
+// ================= DESCOBERTA (UDP Multicast) =================
+message DiscoveryRequest {
+    string gateway_id = 1;
+    string gateway_ip = 2;
+    int32  gateway_udp_port = 3;
+    string message = 4;
+}
+
+message DiscoveryResponse {
+    string source_id = 1;
+    string source_type = 2;      // "controllable" | "non_controllable"
+    string domain_type = 3;      // "carro", "pista", "telemetria_carro", "sensor_ajustavel"
+    string ip = 4;
+    int32  udp_port = 5;
+    int32  grpc_port = 6;        // 0 se não for controlável
+    string initial_state = 7;
+}
+
+// ================= DADOS DE TELEMETRIA (UDP) =================
+message TelemetryData {
+    string source_id = 1;
+    string source_type = 2;
+    int64  timestamp = 3;
+    bool   is_event = 4;
+    string event_description = 5;
+    map<string, double> metrics = 6;
+    map<string, string> labels = 7;
+}
+
+// ================= COMANDOS (gRPC) =================
+message ControlCommand {
+    string command_id = 1;
+    string command_type = 2;   // ENABLE, DISABLE, SET_FREQUENCY, SET_THRESHOLD, ...
+    string parameter = 3;
+    string value = 4;
+}
+
+message ControlResponse {
+    bool   success = 1;
+    string message = 2;
+    string current_state = 3;
+}
+
+message StateRequest {
+    string source_id = 1;
+}
+
+message StateResponse {
+    string source_id = 1;
+    bool   enabled = 2;
+    int32  send_frequency_seconds = 3;
+    double threshold = 4;
+    map<string, string> extra_state = 5;
+}
+
+service SourceControl {
+    rpc SendCommand (ControlCommand) returns (ControlResponse);
+    rpc GetState    (StateRequest)   returns (StateResponse);
+}
+
+// ================= CLIENTE <-> GATEWAY (TCP) =================
+message ClientRequest {
+    string request_id = 1;
+    string action = 2;    // LIST_SOURCES, SEND_COMMAND, ANALYTICS, HISTORY
+    string payload = 3;
+}
+
+message ClientResponse {
+    string request_id = 1;
+    bool   success = 2;
+    string message = 3;
+    string data = 4;
+}
